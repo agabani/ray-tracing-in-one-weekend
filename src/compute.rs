@@ -2,8 +2,9 @@ use crate::color::Color;
 use crate::pixel::Pixel;
 
 pub struct Compute {
-    computes_tx: std::collections::HashMap<usize, std::sync::mpsc::Sender<Pixel>>,
-    join_handles: Vec<std::thread::JoinHandle<()>>,
+    computes_tx: std::collections::HashMap<usize, std::sync::mpsc::Sender<Option<Pixel>>>,
+    join_handles: Vec<Option<std::thread::JoinHandle<()>>>,
+    instances: usize,
 }
 
 impl Compute {
@@ -27,24 +28,48 @@ impl Compute {
 
             let join_handle = std::thread::spawn(move || {
                 for task in compute_rx {
-                    let color = function(&task);
+                    if let Some(task) = task {
+                        let color = function(&task);
 
-                    orchestrator_tx
-                        .send(ComputeResult::new(instance, task, color))
-                        .unwrap();
+                        orchestrator_tx
+                            .send(ComputeResult::new(instance, task, color))
+                            .unwrap();
+                    } else {
+                        return;
+                    }
                 }
             });
-            join_handles.push(join_handle);
+            join_handles.push(Some(join_handle));
         }
 
         Self {
             computes_tx,
             join_handles,
+            instances,
         }
     }
 
-    pub fn computes_tx(&self) -> &std::collections::HashMap<usize, std::sync::mpsc::Sender<Pixel>> {
-        &self.computes_tx
+    pub fn compute(&self, instance: usize, pixel: Pixel) {
+        let tx = self.computes_tx.get(&instance).unwrap();
+        tx.send(Some(pixel)).unwrap();
+    }
+
+    pub fn instances(&self) -> usize {
+        self.instances
+    }
+}
+
+impl Drop for Compute {
+    fn drop(&mut self) {
+        for computes_tx in self.computes_tx.values() {
+            computes_tx.send(None).unwrap();
+        }
+
+        for join_handle in self.join_handles.iter_mut() {
+            if let Some(join_handle) = join_handle.take() {
+                join_handle.join().unwrap();
+            }
+        }
     }
 }
 

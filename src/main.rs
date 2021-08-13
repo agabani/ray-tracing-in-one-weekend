@@ -15,8 +15,8 @@ fn main() {
 
     // processor
     let (orchestration_tx, orchestration_rx) = std::sync::mpsc::channel();
-    // processor
-    let compute = Compute::new(16, orchestration_tx.clone(), move |pixel| {
+
+    let compute = Compute::new(16, orchestration_tx, move |pixel| {
         let r = (pixel.i() as f64) / (image_width as f64 - 1.0);
         let g = (pixel.j() as f64) / (image_height as f64 - 1.0);
         let b = 0.25;
@@ -37,21 +37,20 @@ fn main() {
         }
     }
 
-    for computes_tx in compute.computes_tx().values() {
+    for instance in 0..compute.instances() {
         if let Some(pixel) = jobs.pop() {
-            computes_tx.send(pixel).unwrap();
+            compute.compute(instance, pixel);
         }
     }
 
     for result in orchestration_rx {
         processed += 1;
 
-        buffer.set(&result.pixel(), result.color().clone());
+        buffer.set(result.pixel(), result.color().clone());
 
         if processed < total {
-            let compute_tx = &compute.computes_tx().get(&result.id()).unwrap();
             if let Some(pixel) = jobs.pop() {
-                compute_tx.send(pixel).unwrap();
+                compute.compute(result.id(), pixel);
             }
         } else {
             break;
