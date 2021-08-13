@@ -1,22 +1,12 @@
 mod buffer;
 mod color;
+mod compute;
 mod pixel;
 
 use crate::buffer::Buffer;
 use crate::color::Color;
+use crate::compute::Compute;
 use crate::pixel::Pixel;
-
-pub struct ComputeResult {
-    id: usize,
-    pixel: Pixel,
-    color: Color,
-}
-
-impl ComputeResult {
-    pub fn new(id: usize, pixel: Pixel, color: Color) -> Self {
-        Self { id, pixel, color }
-    }
-}
 
 fn main() {
     // configuration
@@ -25,27 +15,14 @@ fn main() {
 
     // processor
     let (orchestration_tx, orchestration_rx) = std::sync::mpsc::channel();
-    let mut computes_tx = std::collections::HashMap::<usize, std::sync::mpsc::Sender<Pixel>>::new();
+    // processor
+    let compute = Compute::new(16, orchestration_tx.clone(), move |pixel| {
+        let r = (pixel.i() as f64) / (image_width as f64 - 1.0);
+        let g = (pixel.j() as f64) / (image_height as f64 - 1.0);
+        let b = 0.25;
 
-    for compute_id in 0..16 {
-        let orchestration_tx = orchestration_tx.clone();
-        let (compute_tx, compute_rx) = std::sync::mpsc::channel();
-        computes_tx.insert(compute_id, compute_tx);
-
-        std::thread::spawn(move || {
-            for pixel in compute_rx {
-                let r = (pixel.i() as f64) / (image_width as f64 - 1.0);
-                let g = (pixel.j() as f64) / (image_height as f64 - 1.0);
-                let b = 0.25;
-
-                let color = Color::new(r, g, b);
-
-                orchestration_tx
-                    .send(ComputeResult::new(compute_id, pixel, color))
-                    .unwrap();
-            }
-        });
-    }
+        Color::new(r, g, b)
+    });
 
     // orchestrator
     let mut buffer = Buffer::new(image_width, image_height);
@@ -60,7 +37,7 @@ fn main() {
         }
     }
 
-    for computes_tx in computes_tx.values() {
+    for computes_tx in compute.computes_tx().values() {
         if let Some(pixel) = jobs.pop() {
             computes_tx.send(pixel).unwrap();
         }
@@ -69,10 +46,10 @@ fn main() {
     for result in orchestration_rx {
         processed += 1;
 
-        buffer.set(&result.pixel, result.color);
+        buffer.set(&result.pixel(), result.color().clone());
 
         if processed < total {
-            let compute_tx = &computes_tx.get(&result.id).unwrap();
+            let compute_tx = &compute.computes_tx().get(&result.id()).unwrap();
             if let Some(pixel) = jobs.pop() {
                 compute_tx.send(pixel).unwrap();
             }

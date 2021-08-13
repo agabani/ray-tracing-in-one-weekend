@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
 
+#[derive(Clone)]
 pub struct Color {
     r: f64,
     g: f64,
