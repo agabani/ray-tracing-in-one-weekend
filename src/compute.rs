@@ -4,7 +4,6 @@ use crate::pixel::Pixel;
 pub struct Compute {
     computes_tx: std::collections::HashMap<usize, std::sync::mpsc::Sender<Option<Pixel>>>,
     join_handles: Vec<Option<std::thread::JoinHandle<()>>>,
-    instances: usize,
 }
 
 impl Compute {
@@ -45,17 +44,20 @@ impl Compute {
         Self {
             computes_tx,
             join_handles,
-            instances,
         }
     }
 
     pub fn compute(&self, instance: usize, pixel: Pixel) {
-        let tx = self.computes_tx.get(&instance).unwrap();
-        tx.send(Some(pixel)).unwrap();
+        let compute_tx = self.computes_tx.get(&instance).unwrap();
+        compute_tx.send(Some(pixel)).unwrap();
     }
 
-    pub fn instances(&self) -> usize {
-        self.instances
+    pub fn compute_many(&self, jobs: &mut Vec<Pixel>) {
+        for compute_tx in self.computes_tx.values() {
+            if let Some(job) = jobs.pop() {
+                compute_tx.send(Some(job)).unwrap();
+            }
+        }
     }
 }
 

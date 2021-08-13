@@ -37,11 +37,7 @@ fn main() {
         }
     }
 
-    for instance in 0..compute.instances() {
-        if let Some(pixel) = jobs.pop() {
-            compute.compute(instance, pixel);
-        }
-    }
+    compute.compute_many(&mut jobs);
 
     for result in orchestration_rx {
         processed += 1;
