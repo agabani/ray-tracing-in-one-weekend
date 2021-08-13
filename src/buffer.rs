@@ -25,10 +25,10 @@ impl Buffer {
     }
 
     pub fn get(&self, pixel: &Pixel) -> &Color {
-        &self.buffer[self.width * pixel.j + pixel.i]
+        &self.buffer[self.width * pixel.j() + pixel.i()]
     }
 
     pub fn set(&mut self, pixel: &Pixel, color: Color) {
-        self.buffer[self.width * pixel.j + pixel.i] = color;
+        self.buffer[self.width * pixel.j() + pixel.i()] = color;
     }
 }

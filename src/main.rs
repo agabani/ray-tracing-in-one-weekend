@@ -1,19 +1,10 @@
 mod buffer;
 mod color;
+mod pixel;
 
 use crate::buffer::Buffer;
 use crate::color::Color;
-
-pub struct Pixel {
-    i: usize,
-    j: usize,
-}
-
-impl Pixel {
-    pub fn new(i: usize, j: usize) -> Self {
-        Self { i, j }
-    }
-}
+use crate::pixel::Pixel;
 
 pub struct ComputeResult {
     id: usize,
@@ -43,8 +34,8 @@ fn main() {
 
         std::thread::spawn(move || {
             for pixel in compute_rx {
-                let r = (pixel.i as f64) / (image_width as f64 - 1.0);
-                let g = (pixel.j as f64) / (image_height as f64 - 1.0);
+                let r = (pixel.i() as f64) / (image_width as f64 - 1.0);
+                let g = (pixel.j() as f64) / (image_height as f64 - 1.0);
                 let b = 0.25;
 
                 let color = Color::new(r, g, b);
