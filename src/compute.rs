@@ -62,6 +62,41 @@ impl<T> Compute<T> {
             }
         }
     }
+
+    pub fn compute_all<R, F, A>(
+        &self,
+        receiver: &std::sync::mpsc::Receiver<ComputeResult<T, R>>,
+        mut jobs: Vec<T>,
+        function: F,
+        mut accumulator: A,
+    ) -> A
+    where
+        F: FnOnce(A, &T, R) -> A,
+        F: Copy,
+        R: Clone,
+    {
+        self.compute_many(&mut jobs);
+
+        let mut processed = 0;
+        let total = jobs.len();
+
+        for result in receiver {
+            processed += 1;
+
+            let id = result.id();
+            accumulator = function(accumulator, result.task(), result.result().clone());
+
+            if processed < total {
+                if let Some(pixel) = jobs.pop() {
+                    self.compute(id, pixel);
+                }
+            } else {
+                return accumulator;
+            }
+        }
+
+        accumulator
+    }
 }
 
 impl<T> Drop for Compute<T> {

@@ -23,33 +23,22 @@ fn main() {
     });
 
     // orchestrator
-    let mut buffer = Buffer::new(image_width, image_height);
-
-    let mut processed = 0;
-    let total = image_height * image_width;
-
-    let mut jobs = Vec::with_capacity(total);
+    let mut jobs = Vec::with_capacity(image_height * image_width);
     for j in 0..image_height {
         for i in 0..image_width {
             jobs.push(Pixel::new(i, j));
         }
     }
 
-    compute.compute_many(&mut jobs);
-
-    for result in receiver {
-        processed += 1;
-
-        buffer.set(result.task(), result.result().clone());
-
-        if processed < total {
-            if let Some(pixel) = jobs.pop() {
-                compute.compute(result.id(), pixel);
-            }
-        } else {
-            break;
-        }
-    }
+    let buffer = compute.compute_all(
+        &receiver,
+        jobs,
+        |mut buffer, pixel, color| {
+            buffer.set(pixel, color);
+            buffer
+        },
+        Buffer::new(image_width, image_height),
+    );
 
     // save buffer
     println!("P3");
