@@ -1,3 +1,5 @@
+use std::io::Write;
+
 pub struct Compute<T> {
     computes_tx: std::collections::HashMap<usize, std::sync::mpsc::Sender<Option<T>>>,
     join_handles: Vec<Option<std::thread::JoinHandle<()>>>,
@@ -82,6 +84,8 @@ impl<T> Compute<T> {
 
         for result in receiver {
             processed += 1;
+
+            std::io::stderr().write_all(format!("{}/{}\n", processed, total).as_bytes());
 
             let id = result.id();
             accumulator = function(accumulator, result.task(), result.result().clone());
