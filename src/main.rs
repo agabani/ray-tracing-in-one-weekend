@@ -14,9 +14,7 @@ fn main() {
     let image_height: usize = 256;
 
     // processor
-    let (orchestration_tx, orchestration_rx) = std::sync::mpsc::channel();
-
-    let compute = Compute::new(16, orchestration_tx, move |pixel: &Pixel| {
+    let (compute, receiver) = Compute::new(16, move |pixel: &Pixel| {
         let r = (pixel.i() as f64) / (image_width as f64 - 1.0);
         let g = (pixel.j() as f64) / (image_height as f64 - 1.0);
         let b = 0.25;
@@ -39,7 +37,7 @@ fn main() {
 
     compute.compute_many(&mut jobs);
 
-    for result in orchestration_rx {
+    for result in receiver {
         processed += 1;
 
         buffer.set(result.task(), result.result().clone());

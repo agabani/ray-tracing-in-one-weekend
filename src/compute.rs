@@ -6,9 +6,8 @@ pub struct Compute<T> {
 impl<T> Compute<T> {
     pub fn new<F, R>(
         threads: usize,
-        orchestrator_tx: std::sync::mpsc::Sender<ComputeResult<T, R>>,
         function: F,
-    ) -> Self
+    ) -> (Self, std::sync::mpsc::Receiver<ComputeResult<T, R>>)
     where
         F: FnOnce(&T) -> R,
         F: Send + 'static,
@@ -16,11 +15,13 @@ impl<T> Compute<T> {
         T: Send + 'static,
         R: Send + 'static,
     {
+        let (orchestration_tx, orchestration_rx) = std::sync::mpsc::channel();
+
         let mut computes_tx = std::collections::HashMap::with_capacity(threads);
         let mut join_handles = Vec::with_capacity(threads);
 
         for id in 0..threads {
-            let orchestrator_tx = orchestrator_tx.clone();
+            let orchestrator_tx = orchestration_tx.clone();
             let (compute_tx, compute_rx) = std::sync::mpsc::channel();
             computes_tx.insert(id, compute_tx);
 
@@ -40,10 +41,13 @@ impl<T> Compute<T> {
             join_handles.push(Some(join_handle));
         }
 
-        Self {
-            computes_tx,
-            join_handles,
-        }
+        (
+            Self {
+                computes_tx,
+                join_handles,
+            },
+            orchestration_rx,
+        )
     }
 
     pub fn compute(&self, instance: usize, task: T) {
