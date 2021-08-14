@@ -99,6 +99,26 @@ impl std::ops::Mul<Vec3> for f64 {
     }
 }
 
+impl std::ops::Neg for &Vec3 {
+    type Output = Vec3;
+
+    fn neg(self) -> Self::Output {
+        Self::Output {
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
+        }
+    }
+}
+
+impl std::ops::Neg for Vec3 {
+    type Output = Vec3;
+
+    fn neg(self) -> Self::Output {
+        -&self
+    }
+}
+
 impl std::ops::Sub for &Vec3 {
     type Output = Vec3;
 
