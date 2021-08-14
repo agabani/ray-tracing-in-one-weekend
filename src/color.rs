@@ -12,13 +12,22 @@ impl Color {
     pub fn new(r: f64, g: f64, b: f64) -> Self {
         Self { r, g, b }
     }
+
+    pub fn sampled(&self, samples: usize) -> Color {
+        let scale = 1.0 / samples as f64;
+        Self {
+            r: self.r * scale,
+            g: self.g * scale,
+            b: self.b * scale,
+        }
+    }
 }
 
 impl Display for Color {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let r = (255.99 * self.r) as u8;
-        let g = (255.99 * self.g) as u8;
-        let b = (255.99 * self.b) as u8;
+        let r = (256.0 * self.r.clamp(0.0, 0.999)) as u8;
+        let g = (256.0 * self.g.clamp(0.0, 0.999)) as u8;
+        let b = (256.0 * self.b.clamp(0.0, 0.999)) as u8;
 
         write!(f, "{} {} {}", r, g, b)
     }

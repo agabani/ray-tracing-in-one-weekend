@@ -1,17 +1,21 @@
 mod buffer;
+mod camera;
 mod color;
 mod compute;
 mod hittable;
 mod hittable_list;
+mod number;
 mod pixel;
 mod ray;
 mod vec3;
 
 use crate::buffer::Buffer;
+use crate::camera::Camera;
 use crate::color::Color;
 use crate::compute::Compute;
 use crate::hittable::{Hittable, Sphere};
 use crate::hittable_list::HittableList;
+use crate::number::random_f64;
 use crate::pixel::Pixel;
 use crate::ray::Ray;
 use crate::vec3::Vec3;
@@ -21,17 +25,11 @@ fn main() {
     let aspect_ratio = 16.0 / 9.0;
     let image_width: usize = 400;
     let image_height: usize = (image_width as f64 / aspect_ratio) as usize;
+    let samples_per_pixel: usize = 100;
 
     // camera
-    let viewport_height = 2.0;
-    let viewport_width = aspect_ratio * viewport_height;
-    let focal_length = 1.0;
-
-    let origin = Vec3::new(0.0, 0.0, 0.0);
-    let horizontal = Vec3::new(viewport_width, 0.0, 0.0);
-    let vertical = Vec3::new(0.0, viewport_height, 0.0);
-    let lower_left_corner =
-        origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, focal_length);
+    let camera = Camera::new();
+    let camera = std::sync::Arc::new(camera);
 
     let mut world = HittableList::new();
     world.add(std::sync::Arc::new(Sphere::new(
@@ -47,6 +45,7 @@ fn main() {
     // processor
     let mut functions = Vec::new();
     for _ in 0..16 {
+        let camera = camera.clone();
         let world = world.clone();
         functions.push(move |pixel: &Pixel| {
             fn ray_color(
@@ -61,15 +60,14 @@ fn main() {
                 (1.0 - t) * Color::new(1.0, 1.0, 1.0) + t * Color::new(0.5, 0.7, 1.0)
             }
 
-            let u = (pixel.i() as f64) / (image_width as f64 - 1.0);
-            let v = (pixel.j() as f64) / (image_height as f64 - 1.0);
-
-            let ray = Ray::new(
-                origin,
-                lower_left_corner + u * horizontal + v * vertical - origin,
-            );
-
-            ray_color(&ray, &world)
+            let mut color = Color::new(0.0, 0.0, 0.0);
+            for _ in 0..samples_per_pixel {
+                let u = (pixel.i() as f64 + random_f64(None)) / (image_width as f64 - 1.0);
+                let v = (pixel.j() as f64 + random_f64(None)) / (image_height as f64 - 1.0);
+                let ray = camera.get_ray(u, v);
+                color = color + ray_color(&ray, &world);
+            }
+            color
         });
     }
 
@@ -100,7 +98,10 @@ fn main() {
 
     for j in (0..image_height).rev() {
         for i in 0..image_width {
-            println!("{}", buffer.get(&Pixel::new(i, j)))
+            println!(
+                "{}",
+                buffer.get(&Pixel::new(i, j)).sampled(samples_per_pixel)
+            )
         }
     }
 }
