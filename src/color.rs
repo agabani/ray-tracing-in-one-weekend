@@ -22,3 +22,59 @@ impl Display for Color {
         write!(f, "{} {} {}", r, g, b)
     }
 }
+
+impl std::ops::Add for &Color {
+    type Output = Color;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self::Output {
+            r: self.r + rhs.r,
+            g: self.g + rhs.g,
+            b: self.b + rhs.b,
+        }
+    }
+}
+
+impl std::ops::Add for Color {
+    type Output = Color;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        &self + &rhs
+    }
+}
+
+impl std::ops::Mul<f64> for &Color {
+    type Output = Color;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Self::Output {
+            r: self.r * rhs,
+            g: self.g * rhs,
+            b: self.b * rhs,
+        }
+    }
+}
+
+impl std::ops::Mul<f64> for Color {
+    type Output = Color;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        &self * rhs
+    }
+}
+
+impl std::ops::Mul<&Color> for f64 {
+    type Output = Color;
+
+    fn mul(self, rhs: &Color) -> Self::Output {
+        rhs * self
+    }
+}
+
+impl std::ops::Mul<Color> for f64 {
+    type Output = Color;
+
+    fn mul(self, rhs: Color) -> Self::Output {
+        &rhs * self
+    }
+}
