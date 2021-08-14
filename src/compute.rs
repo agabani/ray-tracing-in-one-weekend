@@ -1,37 +1,36 @@
-use crate::color::Color;
-use crate::pixel::Pixel;
-
-pub struct Compute {
-    computes_tx: std::collections::HashMap<usize, std::sync::mpsc::Sender<Option<Pixel>>>,
+pub struct Compute<T> {
+    computes_tx: std::collections::HashMap<usize, std::sync::mpsc::Sender<Option<T>>>,
     join_handles: Vec<Option<std::thread::JoinHandle<()>>>,
 }
 
-impl Compute {
-    pub fn new<F>(
-        instances: usize,
-        orchestrator_tx: std::sync::mpsc::Sender<ComputeResult>,
+impl<T> Compute<T> {
+    pub fn new<F, R>(
+        threads: usize,
+        orchestrator_tx: std::sync::mpsc::Sender<ComputeResult<T, R>>,
         function: F,
     ) -> Self
     where
-        F: FnOnce(&Pixel) -> Color,
+        F: FnOnce(&T) -> R,
         F: Send + 'static,
         F: Copy,
+        T: Send + 'static,
+        R: Send + 'static,
     {
-        let mut computes_tx = std::collections::HashMap::with_capacity(instances);
-        let mut join_handles = Vec::with_capacity(instances);
+        let mut computes_tx = std::collections::HashMap::with_capacity(threads);
+        let mut join_handles = Vec::with_capacity(threads);
 
-        for instance in 0..instances {
+        for id in 0..threads {
             let orchestrator_tx = orchestrator_tx.clone();
             let (compute_tx, compute_rx) = std::sync::mpsc::channel();
-            computes_tx.insert(instance, compute_tx);
+            computes_tx.insert(id, compute_tx);
 
             let join_handle = std::thread::spawn(move || {
                 for task in compute_rx {
                     if let Some(task) = task {
-                        let color = function(&task);
+                        let result = function(&task);
 
                         orchestrator_tx
-                            .send(ComputeResult::new(instance, task, color))
+                            .send(ComputeResult::new(id, task, result))
                             .unwrap();
                     } else {
                         return;
@@ -47,12 +46,12 @@ impl Compute {
         }
     }
 
-    pub fn compute(&self, instance: usize, pixel: Pixel) {
+    pub fn compute(&self, instance: usize, task: T) {
         let compute_tx = self.computes_tx.get(&instance).unwrap();
-        compute_tx.send(Some(pixel)).unwrap();
+        compute_tx.send(Some(task)).unwrap();
     }
 
-    pub fn compute_many(&self, jobs: &mut Vec<Pixel>) {
+    pub fn compute_many(&self, jobs: &mut Vec<T>) {
         for compute_tx in self.computes_tx.values() {
             if let Some(job) = jobs.pop() {
                 compute_tx.send(Some(job)).unwrap();
@@ -61,7 +60,7 @@ impl Compute {
     }
 }
 
-impl Drop for Compute {
+impl<T> Drop for Compute<T> {
     fn drop(&mut self) {
         for computes_tx in self.computes_tx.values() {
             computes_tx.send(None).unwrap();
@@ -75,28 +74,28 @@ impl Drop for Compute {
     }
 }
 
-pub struct ComputeResult {
+pub struct ComputeResult<T, R> {
     id: usize,
-    pixel: Pixel,
-    color: Color,
+    task: T,
+    result: R,
 }
 
-impl ComputeResult {
+impl<T, R> ComputeResult<T, R> {
     pub fn id(&self) -> usize {
         self.id
     }
 
-    pub fn pixel(&self) -> &Pixel {
-        &self.pixel
+    pub fn task(&self) -> &T {
+        &self.task
     }
 
-    pub fn color(&self) -> &Color {
-        &self.color
+    pub fn result(&self) -> &R {
+        &self.result
     }
 }
 
-impl ComputeResult {
-    pub fn new(id: usize, pixel: Pixel, color: Color) -> Self {
-        Self { id, pixel, color }
+impl<T, R> ComputeResult<T, R> {
+    pub fn new(id: usize, task: T, result: R) -> Self {
+        Self { id, task, result }
     }
 }
