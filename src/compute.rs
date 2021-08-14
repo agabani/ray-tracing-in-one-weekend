@@ -7,22 +7,22 @@ pub struct Compute<T> {
 
 impl<T> Compute<T> {
     pub fn new<F, R>(
-        threads: usize,
-        function: F,
+        mut functions: Vec<F>,
     ) -> (Self, std::sync::mpsc::Receiver<ComputeResult<T, R>>)
     where
-        F: FnOnce(&T) -> R,
+        F: Fn(&T) -> R,
         F: Send + 'static,
-        F: Copy,
         T: Send + 'static,
         R: Send + 'static,
     {
         let (orchestration_tx, orchestration_rx) = std::sync::mpsc::channel();
 
-        let mut computes_tx = std::collections::HashMap::with_capacity(threads);
-        let mut join_handles = Vec::with_capacity(threads);
+        let mut computes_tx = std::collections::HashMap::with_capacity(functions.len());
+        let mut join_handles = Vec::with_capacity(functions.len());
 
-        for id in 0..threads {
+        while let Some(function) = functions.pop() {
+            let id = join_handles.len();
+
             let orchestrator_tx = orchestration_tx.clone();
             let (compute_tx, compute_rx) = std::sync::mpsc::channel();
             computes_tx.insert(id, compute_tx);

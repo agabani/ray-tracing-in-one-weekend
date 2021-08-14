@@ -1,3 +1,4 @@
+use crate::vec3::Vec3;
 use std::fmt::{Display, Formatter};
 
 #[derive(Clone)]
@@ -76,5 +77,25 @@ impl std::ops::Mul<Color> for f64 {
 
     fn mul(self, rhs: Color) -> Self::Output {
         &rhs * self
+    }
+}
+
+impl std::ops::Add<&Vec3> for &Color {
+    type Output = Color;
+
+    fn add(self, rhs: &Vec3) -> Self::Output {
+        Self::Output {
+            r: self.r + rhs.x(),
+            g: self.g + rhs.y(),
+            b: self.b + rhs.z(),
+        }
+    }
+}
+
+impl std::ops::Add<Color> for &Vec3 {
+    type Output = Color;
+
+    fn add(self, rhs: Color) -> Color {
+        &rhs + self
     }
 }

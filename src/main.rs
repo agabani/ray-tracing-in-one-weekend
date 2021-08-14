@@ -2,30 +2,19 @@ mod buffer;
 mod color;
 mod compute;
 mod hittable;
+mod hittable_list;
 mod pixel;
 mod ray;
 mod vec3;
-mod hittable_list;
 
 use crate::buffer::Buffer;
 use crate::color::Color;
 use crate::compute::Compute;
+use crate::hittable::{Hittable, Sphere};
+use crate::hittable_list::HittableList;
 use crate::pixel::Pixel;
 use crate::ray::Ray;
 use crate::vec3::Vec3;
-
-fn hit_sphere(center: &Vec3, radius: f64, ray: &Ray) -> f64 {
-    let oc = ray.origin() - center;
-    let a = ray.direction().length_squared();
-    let half_b = oc.dot(ray.direction());
-    let c = oc.length_squared() - radius.powi(2);
-    let d = half_b.powi(2) - a * c;
-    if d < 0.0 {
-        -1.0
-    } else {
-        (-half_b - d.sqrt()) / a
-    }
-}
 
 fn main() {
     // image
@@ -44,29 +33,47 @@ fn main() {
     let lower_left_corner =
         origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, focal_length);
 
+    let mut world = HittableList::new();
+    world.add(std::sync::Arc::new(Sphere::new(
+        Vec3::new(0.0, 0.0, -1.0),
+        0.5,
+    )));
+    world.add(std::sync::Arc::new(Sphere::new(
+        Vec3::new(0.0, -100.5, -1.0),
+        100.0,
+    )));
+    let world: std::sync::Arc<(dyn Hittable + 'static + Send)> = std::sync::Arc::new(world);
+
     // processor
-    let (compute, receiver) = Compute::new(16, move |pixel: &Pixel| {
-        fn ray_color(ray: &Ray) -> Color {
-            let t = hit_sphere(&Vec3::new(0.0, 0.0, -1.0), 0.5, ray);
-            if t > 0.0 {
-                let n = (ray.at(t) - Vec3::new(0.0, 0.0, -1.0)).unit();
-                return 0.5 * Color::new(n.x() + 1.0, n.y() + 1.0, n.z() + 1.0);
+    let mut functions = Vec::new();
+    for _ in 0..16 {
+        let world = world.clone();
+        functions.push(move |pixel: &Pixel| {
+            fn ray_color(
+                ray: &Ray,
+                world: &std::sync::Arc<(dyn Hittable + 'static + Send)>,
+            ) -> Color {
+                if let Some(hit_record) = world.hit(ray, 0.0, f64::INFINITY) {
+                    return 0.5 * (hit_record.normal() + Color::new(1.0, 1.0, 1.0));
+                }
+                let unit_direction = ray.direction().unit();
+                let t = 0.5 * (unit_direction.y() + 1.0);
+                (1.0 - t) * Color::new(1.0, 1.0, 1.0) + t * Color::new(0.5, 0.7, 1.0)
             }
-            let unit_direction = ray.direction().unit();
-            let t = 0.5 * (unit_direction.y() + 1.0);
-            (1.0 - t) * Color::new(1.0, 1.0, 1.0) + t * Color::new(0.5, 0.7, 1.0)
-        }
 
-        let u = (pixel.i() as f64) / (image_width as f64 - 1.0);
-        let v = (pixel.j() as f64) / (image_height as f64 - 1.0);
+            let u = (pixel.i() as f64) / (image_width as f64 - 1.0);
+            let v = (pixel.j() as f64) / (image_height as f64 - 1.0);
 
-        let ray = Ray::new(
-            origin,
-            lower_left_corner + u * horizontal + v * vertical - origin,
-        );
+            let ray = Ray::new(
+                origin,
+                lower_left_corner + u * horizontal + v * vertical - origin,
+            );
 
-        ray_color(&ray)
-    });
+            ray_color(&ray, &world)
+        });
+    }
+
+    let (compute, receiver) = Compute::new(functions);
 
     // orchestrator
     let mut jobs = Vec::with_capacity(image_height * image_width);
