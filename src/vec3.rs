@@ -33,6 +33,10 @@ impl Vec3 {
     pub fn unit(&self) -> Self {
         self / self.length()
     }
+
+    pub fn dot(&self, v: &Vec3) -> f64 {
+        self.x() * v.x() + self.y() * v.y() + self.z() * v.z()
+    }
 }
 
 impl std::ops::Add for &Vec3 {
