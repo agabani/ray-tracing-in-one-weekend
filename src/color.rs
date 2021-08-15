@@ -21,6 +21,14 @@ impl Color {
             b: self.b * scale,
         }
     }
+
+    pub fn gamma(&self) -> Color {
+        Self {
+            r: self.r.sqrt(),
+            g: self.g.sqrt(),
+            b: self.b.sqrt(),
+        }
+    }
 }
 
 impl Display for Color {

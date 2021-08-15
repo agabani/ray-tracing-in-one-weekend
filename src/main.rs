@@ -26,6 +26,7 @@ fn main() {
     let image_width: usize = 400;
     let image_height: usize = (image_width as f64 / aspect_ratio) as usize;
     let samples_per_pixel: usize = 100;
+    let max_depth: usize = 50;
 
     // camera
     let camera = Camera::new();
@@ -51,11 +52,19 @@ fn main() {
             fn ray_color(
                 ray: &Ray,
                 world: &std::sync::Arc<(dyn Hittable + 'static + Send)>,
+                depth: usize,
             ) -> Color {
-                if let Some(hit_record) = world.hit(ray, 0.0, f64::INFINITY) {
-                    return 0.5 * (hit_record.normal() + Color::new(1.0, 1.0, 1.0));
+                if depth == 0 {
+                    return Color::new(0.0, 0.0, 0.0);
                 }
-                let unit_direction = ray.direction().unit();
+
+                if let Some(hit_record) = world.hit(ray, 0.001, f64::INFINITY) {
+                    let target = hit_record.point()
+                        + Vec3::random_in_unit_hemisphere(hit_record.normal());
+                    let ray = Ray::new(hit_record.point().clone(), target - hit_record.point());
+                    return 0.5 * ray_color(&ray, world, depth - 1);
+                }
+                let unit_direction = ray.direction().unit_vector();
                 let t = 0.5 * (unit_direction.y() + 1.0);
                 (1.0 - t) * Color::new(1.0, 1.0, 1.0) + t * Color::new(0.5, 0.7, 1.0)
             }
@@ -65,7 +74,7 @@ fn main() {
                 let u = (pixel.i() as f64 + random_f64(None)) / (image_width as f64 - 1.0);
                 let v = (pixel.j() as f64 + random_f64(None)) / (image_height as f64 - 1.0);
                 let ray = camera.get_ray(u, v);
-                color = color + ray_color(&ray, &world);
+                color = color + ray_color(&ray, &world, max_depth);
             }
             color
         });
@@ -100,7 +109,10 @@ fn main() {
         for i in 0..image_width {
             println!(
                 "{}",
-                buffer.get(&Pixel::new(i, j)).sampled(samples_per_pixel)
+                buffer
+                    .get(&Pixel::new(i, j))
+                    .sampled(samples_per_pixel)
+                    .gamma()
             )
         }
     }

@@ -1,3 +1,5 @@
+use crate::number::random_f64;
+
 #[derive(Clone, Copy)]
 pub struct Vec3 {
     x: f64,
@@ -30,12 +32,42 @@ impl Vec3 {
         self.length_squared().sqrt()
     }
 
-    pub fn unit(&self) -> Self {
+    pub fn unit_vector(&self) -> Self {
         self / self.length()
     }
 
     pub fn dot(&self, v: &Vec3) -> f64 {
         self.x() * v.x() + self.y() * v.y() + self.z() * v.z()
+    }
+
+    pub fn random(min_max: Option<(f64, f64)>) -> Self {
+        Self::new(
+            random_f64(min_max),
+            random_f64(min_max),
+            random_f64(min_max),
+        )
+    }
+
+    pub fn random_in_unit_sphere() -> Self {
+        loop {
+            let point = Self::random(Some((-1.0, 1.0)));
+            if point.length_squared() < 1.0 {
+                return point;
+            }
+        }
+    }
+
+    pub fn random_unit_vector() -> Self {
+        Self::random_in_unit_sphere().unit_vector()
+    }
+
+    pub fn random_in_unit_hemisphere(normal: &Self) -> Self {
+        let in_unit_sphere = Self::random_in_unit_sphere();
+        if in_unit_sphere.dot(normal) > 0.0 {
+            in_unit_sphere
+        } else {
+            -in_unit_sphere
+        }
     }
 }
 
@@ -50,6 +82,15 @@ impl std::ops::Add for &Vec3 {
         }
     }
 }
+
+impl std::ops::Add<Vec3> for &Vec3 {
+    type Output = Vec3;
+
+    fn add(self, rhs: Vec3) -> Self::Output {
+        self + &rhs
+    }
+}
+
 
 impl std::ops::Add for Vec3 {
     type Output = Vec3;
