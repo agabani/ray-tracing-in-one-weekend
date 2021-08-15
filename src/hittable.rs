@@ -46,6 +46,10 @@ impl HitRecord {
         self.time
     }
 
+    pub fn front_face(&self) -> bool {
+        self.front_face
+    }
+
     pub fn material(&self) -> &std::sync::Arc<dyn Material> {
         &self.material
     }
