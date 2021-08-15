@@ -31,7 +31,13 @@ fn main() {
     let max_depth: usize = 50;
 
     // camera
-    let camera = Camera::new();
+    let camera = Camera::new(
+        Vec3::new(-2.0, 2.0, 1.0),
+        Vec3::new(0.0, 0.0, -1.0),
+        Vec3::new(0.0, 1.0, 0.0),
+        90.0,
+        aspect_ratio,
+    );
     let camera = std::sync::Arc::new(camera);
 
     // world
@@ -59,7 +65,7 @@ fn main() {
     )));
     world.add(std::sync::Arc::new(Sphere::new(
         Vec3::new(-1.0, 0.0, -1.0),
-        -0.4,
+        -0.45,
         material_left,
     )));
     world.add(std::sync::Arc::new(Sphere::new(
