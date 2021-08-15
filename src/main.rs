@@ -85,8 +85,8 @@ fn random_scene() -> HittableList {
 
 fn main() {
     // image
-    let aspect_ratio = 3.0 / 2.0;
-    let image_width: usize = 1200;
+    let aspect_ratio = 16.0 / 9.0;
+    let image_width: usize = 1920;
     let image_height: usize = (image_width as f64 / aspect_ratio) as usize;
     let samples_per_pixel: usize = 500;
     let max_depth: usize = 50;
