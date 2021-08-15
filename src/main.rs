@@ -16,7 +16,7 @@ use crate::color::Color;
 use crate::compute::Compute;
 use crate::hittable::{Hittable, Sphere};
 use crate::hittable_list::HittableList;
-use crate::material::{Lambertian, Metal, Dielectric};
+use crate::material::{Dielectric, Lambertian, Metal};
 use crate::number::random_f64;
 use crate::pixel::Pixel;
 use crate::ray::Ray;
@@ -38,9 +38,9 @@ fn main() {
     let mut world = HittableList::new();
 
     let material_ground = std::sync::Arc::new(Lambertian::new(Color::new(0.8, 0.8, 0.0)));
-    let material_center = std::sync::Arc::new(Dielectric::new(1.5));
+    let material_center = std::sync::Arc::new(Lambertian::new(Color::new(0.1, 0.2, 0.5)));
     let material_left = std::sync::Arc::new(Dielectric::new(1.5));
-    let material_right = std::sync::Arc::new(Metal::new(Color::new(0.8, 0.6, 0.2), 1.0));
+    let material_right = std::sync::Arc::new(Metal::new(Color::new(0.8, 0.6, 0.2), 0.0));
 
     world.add(std::sync::Arc::new(Sphere::new(
         Vec3::new(0.0, -100.5, -1.0),
@@ -55,6 +55,11 @@ fn main() {
     world.add(std::sync::Arc::new(Sphere::new(
         Vec3::new(-1.0, 0.0, -1.0),
         0.5,
+        material_left.clone(),
+    )));
+    world.add(std::sync::Arc::new(Sphere::new(
+        Vec3::new(-1.0, 0.0, -1.0),
+        -0.4,
         material_left,
     )));
     world.add(std::sync::Arc::new(Sphere::new(
