@@ -69,6 +69,15 @@ impl Vec3 {
             -in_unit_sphere
         }
     }
+
+    pub fn near_zero(&self) -> bool {
+        let epsilon = 1e-8;
+        self.x.abs() < epsilon && self.y.abs() < epsilon && self.z.abs() < epsilon
+    }
+
+    pub fn reflect(&self, normal: &Self) -> Self {
+        self - 2.0 * self.dot(normal) * normal
+    }
 }
 
 impl std::ops::Add for &Vec3 {
@@ -90,7 +99,6 @@ impl std::ops::Add<Vec3> for &Vec3 {
         self + &rhs
     }
 }
-
 
 impl std::ops::Add for Vec3 {
     type Output = Vec3;

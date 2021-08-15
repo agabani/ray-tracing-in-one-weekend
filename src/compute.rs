@@ -77,10 +77,10 @@ impl<T> Compute<T> {
         F: Copy,
         R: Clone,
     {
-        self.compute_many(&mut jobs);
-
         let mut processed = 0;
         let total = jobs.len();
+
+        self.compute_many(&mut jobs);
 
         for result in receiver {
             processed += 1;

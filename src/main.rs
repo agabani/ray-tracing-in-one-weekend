@@ -4,6 +4,7 @@ mod color;
 mod compute;
 mod hittable;
 mod hittable_list;
+mod material;
 mod number;
 mod pixel;
 mod ray;
@@ -15,6 +16,7 @@ use crate::color::Color;
 use crate::compute::Compute;
 use crate::hittable::{Hittable, Sphere};
 use crate::hittable_list::HittableList;
+use crate::material::{Lambertian, Metal};
 use crate::number::random_f64;
 use crate::pixel::Pixel;
 use crate::ray::Ray;
@@ -32,15 +34,35 @@ fn main() {
     let camera = Camera::new();
     let camera = std::sync::Arc::new(camera);
 
+    // world
     let mut world = HittableList::new();
-    world.add(std::sync::Arc::new(Sphere::new(
-        Vec3::new(0.0, 0.0, -1.0),
-        0.5,
-    )));
+
+    let material_ground = std::sync::Arc::new(Lambertian::new(Color::new(0.8, 0.8, 0.0)));
+    let material_center = std::sync::Arc::new(Lambertian::new(Color::new(0.7, 0.3, 0.3)));
+    let material_left = std::sync::Arc::new(Metal::new(Color::new(0.8, 0.8, 0.8), 0.3));
+    let material_right = std::sync::Arc::new(Metal::new(Color::new(0.8, 0.6, 0.2), 1.0));
+
     world.add(std::sync::Arc::new(Sphere::new(
         Vec3::new(0.0, -100.5, -1.0),
         100.0,
+        material_ground,
     )));
+    world.add(std::sync::Arc::new(Sphere::new(
+        Vec3::new(0.0, 0.0, -1.0),
+        0.5,
+        material_center,
+    )));
+    world.add(std::sync::Arc::new(Sphere::new(
+        Vec3::new(-1.0, 0.0, -1.0),
+        0.5,
+        material_left,
+    )));
+    world.add(std::sync::Arc::new(Sphere::new(
+        Vec3::new(1.0, 0.0, -1.0),
+        0.5,
+        material_right,
+    )));
+
     let world: std::sync::Arc<(dyn Hittable + 'static + Send)> = std::sync::Arc::new(world);
 
     // processor
@@ -59,10 +81,13 @@ fn main() {
                 }
 
                 if let Some(hit_record) = world.hit(ray, 0.001, f64::INFINITY) {
-                    let target = hit_record.point()
-                        + Vec3::random_in_unit_hemisphere(hit_record.normal());
-                    let ray = Ray::new(hit_record.point().clone(), target - hit_record.point());
-                    return 0.5 * ray_color(&ray, world, depth - 1);
+                    return if let Some((attenuation, scattered)) =
+                        hit_record.material().scatter(ray, &hit_record)
+                    {
+                        attenuation * ray_color(&scattered, world, depth - 1)
+                    } else {
+                        Color::new(0.0, 0.0, 0.0)
+                    };
                 }
                 let unit_direction = ray.direction().unit_vector();
                 let t = 0.5 * (unit_direction.y() + 1.0);
