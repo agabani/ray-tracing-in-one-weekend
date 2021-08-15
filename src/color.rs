@@ -1,3 +1,4 @@
+use crate::number::random_f64;
 use crate::vec3::Vec3;
 use std::fmt::{Display, Formatter};
 
@@ -27,6 +28,15 @@ impl Color {
             r: self.r.sqrt(),
             g: self.g.sqrt(),
             b: self.b.sqrt(),
+        }
+    }
+
+    pub fn random(min_max: Option<(f64, f64)>) -> Color {
+        let min_max = Some(min_max.unwrap_or((0.0, 1.0)));
+        Self {
+            r: random_f64(min_max),
+            g: random_f64(min_max),
+            b: random_f64(min_max),
         }
     }
 }
